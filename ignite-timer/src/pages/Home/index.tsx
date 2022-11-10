@@ -6,7 +6,7 @@ import {
   StartCountdownButton,
   StopCountdownButton,
 } from './styles'
-import { useEffect, useState } from 'react'
+import { createContext, useEffect, useState } from 'react'
 import { NewCycleForm } from '../NewCycleForm'
 import { Countdown } from '../Countdown'
 
@@ -19,15 +19,32 @@ interface Cycle {
   finishedDate?: Date
 }
 
+interface CyclesContextType {
+  activeCycle: Cycle | undefined
+  activeCycleId: string | null
+  markCurrentCycleAsFinished: () => void
+}
+
+export const CyclesContext = createContext({} as CyclesContextType)
+
 export function Home() {
   const [cycles, setCycles] = useState<Cycle[]>([])
   const [activeCycleId, setActiveCycleId] = useState<string | null>(null)
 
   // procuro meu id no array de ciclos
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
-  
 
-  
+  function markCurrentCycleAsFinished() {
+    setCycles((oldState) =>
+      oldState.map((cycle) => {
+        if (cycle.id === activeCycleId) {
+          return { ...cycle, finishedDate: new Date() }
+        } else {
+          return cycle
+        }
+      }),
+    )
+  }
 
   // essa funcao vai receber os dados do handleSubmit
   function handleCreateNewCycle(data: any) {
@@ -58,25 +75,6 @@ export function Home() {
     setActiveCycleId(null)
   }
 
-  // subtraio o total de segundos - os segundos que ja passaram
-  const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0
-  // obtenho: quantos minutos eu tenho do total de segundos restantes e arredondo pra baixo (ex: 1499 segundos = 24,93 sendo que ainda tenho 24 minutos)
-  const minutesAmount = Math.floor(currentSeconds / 60)
-  // obtenho: quantos segundos tenho sobrando que nao cabem em um minuto, ou seja, os segundos restantes
-  const secondsAmount = currentSeconds % 60
-  // toda string precisa ter dois parametros, e nao tendo, preencho com zero
-  const minutes = String(minutesAmount).padStart(2, '0')
-  const seconds = String(secondsAmount).padStart(2, '0')
-
-  // console.log(formState.errors)
-  console.log(activeCycle)
-
-  useEffect(() => {
-    if (activeCycle) {
-      document.title = `${minutes}:${seconds}`
-    }
-  }, [minutes, seconds, activeCycle])
-
   // observar meu input de task
   const task = watch('task')
   // variavel auxiliar para melhor leitura do codigo
@@ -85,8 +83,12 @@ export function Home() {
   return (
     <HomeContainer>
       <form action="" onSubmit={handleSubmit(handleCreateNewCycle)}>
-        <NewCycleForm />
-        <Countdown />
+        <CyclesContext.Provider
+          value={{ activeCycle, activeCycleId, markCurrentCycleAsFinished }}
+        >
+          <NewCycleForm />
+          <Countdown />
+        </CyclesContext.Provider>
 
         {activeCycle ? (
           <StopCountdownButton onClick={handleInterruptCycle} type="button">
