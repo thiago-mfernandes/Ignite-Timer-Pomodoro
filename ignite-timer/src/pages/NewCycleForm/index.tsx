@@ -1,38 +1,12 @@
 import { FormContainer, MinutesAmountInput, TaskInput } from './styles'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-// a biblioteca zod nao tem importacao default, entao importo tudo como zod
-import * as zod from 'zod'
+
+import { useContext } from 'react'
+import { CyclesContext } from '../../contexts/CyclesContext'
+import { useFormContext } from 'react-hook-form'
 
 export function NewCycleForm() {
-  // definicao de qual sera o formato de validacao
-  // qual formato dos dados que estou recebendo no meu formulario - parametro data - ??
-  const newCycleFormValidationSchema = zod.object({
-    task: zod.string().min(1, 'Informe a tarefa'),
-    minutesAmount: zod
-      .number()
-      .min(5, 'O ciclo precisa ter no mínimo 5 minutos.')
-      .max(60, 'O ciclo precisa ter no máximo 60 minutos.'),
-  })
-
-  // interface NewCycleFormData {
-  //   task: string
-  //   minutesAmount: number
-  // }
-
-  // usar o type quando vou fazer referencia a outra variavel
-  // o zod percorre meu schema e verifica atraves de cada input seu tipo gerando uma interface
-  type NewCycleFormData = zod.infer<typeof newCycleFormValidationSchema>
-
-  // indicar ao useForm() um objeto de configuracoes de resolver, indicando qual sera meu resolver
-  const { register, handleSubmit, watch, reset } = useForm<NewCycleFormData>({
-    // indicar ao meu zodResolver qual sera meu schema de validacao
-    resolver: zodResolver(newCycleFormValidationSchema),
-    defaultValues: {
-      task: '',
-      minutesAmount: 0,
-    },
-  })
+  const { activeCycle } = useContext(CyclesContext)
+  const { register } = useFormContext()
 
   return (
     <FormContainer>

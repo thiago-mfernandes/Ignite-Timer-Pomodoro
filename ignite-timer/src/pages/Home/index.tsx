@@ -1,78 +1,53 @@
 import { HandPalm, Play } from 'phosphor-react'
-import { differenceInSeconds } from 'date-fns'
 
 import {
   HomeContainer,
   StartCountdownButton,
   StopCountdownButton,
 } from './styles'
-import { createContext, useEffect, useState } from 'react'
+import { useContext } from 'react'
 import { NewCycleForm } from '../NewCycleForm'
 import { Countdown } from '../Countdown'
+import { FormProvider, useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+// a biblioteca zod nao tem importacao default, entao importo tudo como zod
+import * as zod from 'zod'
+import { CyclesContext } from '../../contexts/CyclesContext'
 
-interface Cycle {
-  id: string
-  task: string
-  minutesAmount: number
-  startDate: Date
-  interruptedDate?: Date
-  finishedDate?: Date
-}
+// definicao de qual sera o formato de validacao
+// qual formato dos dados que estou recebendo no meu formulario - parametro data - ??
+const newCycleFormValidationSchema = zod.object({
+  task: zod.string().min(1, 'Informe a tarefa'),
+  minutesAmount: zod
+    .number()
+    .min(5, 'O ciclo precisa ter no mínimo 5 minutos.')
+    .max(60, 'O ciclo precisa ter no máximo 60 minutos.'),
+})
 
-interface CyclesContextType {
-  activeCycle: Cycle | undefined
-  activeCycleId: string | null
-  markCurrentCycleAsFinished: () => void
-}
-
-export const CyclesContext = createContext({} as CyclesContextType)
+// usar o type quando vou fazer referencia a outra variavel
+// o zod percorre meu schema e verifica atraves de cada input seu tipo gerando uma interface
+type NewCycleFormData = zod.infer<typeof newCycleFormValidationSchema>
 
 export function Home() {
-  const [cycles, setCycles] = useState<Cycle[]>([])
-  const [activeCycleId, setActiveCycleId] = useState<string | null>(null)
+  const { activeCycle, createNewCycle, interruptCycle } =
+    useContext(CyclesContext)
 
-  // procuro meu id no array de ciclos
-  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
+  // indicar ao useForm() um objeto de configuracoes de resolver, indicando qual sera meu resolver
+  // aqui eu tenho na variavel newCycleForm uma instancia com todas as funcionalidaes que vou usar, o register que sera passado via props e o FormProvider que sera o contexto nativo
+  const newCycleForm = useForm<NewCycleFormData>({
+    // indicar ao meu zodResolver qual sera meu schema de validacao
+    resolver: zodResolver(newCycleFormValidationSchema),
+    defaultValues: {
+      task: '',
+      minutesAmount: 0,
+    },
+  })
 
-  function markCurrentCycleAsFinished() {
-    setCycles((oldState) =>
-      oldState.map((cycle) => {
-        if (cycle.id === activeCycleId) {
-          return { ...cycle, finishedDate: new Date() }
-        } else {
-          return cycle
-        }
-      }),
-    )
-  }
+  const { handleSubmit, watch, reset } = newCycleForm
 
-  // essa funcao vai receber os dados do handleSubmit
-  function handleCreateNewCycle(data: any) {
-    const id = String(new Date().getTime())
-    const newCycle: Cycle = {
-      id,
-      task: data.task,
-      minutesAmount: data.minutesAmount,
-      startDate: new Date(),
-    }
-
-    setCycles((oldCycles) => [...oldCycles, newCycle])
-    setActiveCycleId(id)
-    setAmountSecondsPassed(0)
+  function handleCreateNewCycle(data: NewCycleFormData) {
+    createNewCycle(data)
     reset()
-  }
-
-  function handleInterruptCycle() {
-    setCycles((oldState) =>
-      oldState.map((cycle) => {
-        if (cycle.id === activeCycleId) {
-          return { ...cycle, interruptedDate: new Date() }
-        } else {
-          return cycle
-        }
-      }),
-    )
-    setActiveCycleId(null)
   }
 
   // observar meu input de task
@@ -83,15 +58,14 @@ export function Home() {
   return (
     <HomeContainer>
       <form action="" onSubmit={handleSubmit(handleCreateNewCycle)}>
-        <CyclesContext.Provider
-          value={{ activeCycle, activeCycleId, markCurrentCycleAsFinished }}
-        >
+        {/** FormProvider é um contexto do react hook forms, onde eu posso passar props */}
+        <FormProvider {...newCycleForm}>
           <NewCycleForm />
-          <Countdown />
-        </CyclesContext.Provider>
+        </FormProvider>
+        <Countdown />
 
         {activeCycle ? (
-          <StopCountdownButton onClick={handleInterruptCycle} type="button">
+          <StopCountdownButton onClick={interruptCycle} type="button">
             <HandPalm size={24} />
             Interromper
           </StopCountdownButton>
